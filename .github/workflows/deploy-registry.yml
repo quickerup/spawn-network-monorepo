@@ -16,6 +16,8 @@ jobs:
           node-version-file: '.nvmrc'
           cache: 'npm'
       - run: npm ci
+      env:
+        CLOUDFLARE_API_TOKEN: ${ secrets.CLOUDFLARE_API_TOKEN }
       - name: Typecheck
         run: npm run typecheck --workspace=apps/registry-service
       - name: Deploy Registry Service
