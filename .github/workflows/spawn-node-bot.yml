@@ -15,7 +15,7 @@ jobs:
       - name: Generate wrangler config for new node
         run: npx tsx scripts/templating/generate-node-toml.ts "${{ github.event.client_payload.token_ref }}"
         env:
-          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           TOKEN_STORE_KV_ID: ${{ secrets.TOKEN_STORE_KV_ID }}
           ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
       - name: Commit generated node config
@@ -28,4 +28,4 @@ jobs:
       - name: Deploy new node
         run: npx wrangler deploy --config "apps/node-instances/${{ github.event.client_payload.token_ref }}/wrangler.toml"
         env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

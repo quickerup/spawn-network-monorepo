@@ -20,4 +20,4 @@ jobs:
       - name: Deploy Master Bot
         run: npm run deploy:master
         env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
