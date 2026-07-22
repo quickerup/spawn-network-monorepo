@@ -1,0 +1,10 @@
+name = "spawn-master-bot"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+kv_namespaces = [
+  { binding = "TOKEN_STORE", id = "your-kv-id-here" }
+]
+[env.production]
+kv_namespaces = [
+  { binding = "TOKEN_STORE", id = "production-kv-id" }
+]

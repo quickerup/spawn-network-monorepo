@@ -1,0 +1,25 @@
+{
+  "name": "spawn-network-monorepo",
+  "private": true,
+  "packageManager": "npm@10.2.4",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck",
+    "deploy:master": "npm run deploy --workspace=apps/master-bot",
+    "deploy:registry": "npm run deploy --workspace=apps/registry-service"
+  },
+  "devDependencies": {
+    "turbo": "^1.10.0",
+    "typescript": "^5.2.0",
+    "tsx": "^4.7.0",
+    "wrangler": "^3.28.0",
+    "@cloudflare/workers-types": "^4.20240117.0"
+  }
+}

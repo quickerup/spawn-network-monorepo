@@ -1,0 +1,12 @@
+name = "node-bot-${UNIQUE_ID}"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+[durable_objects]
+bindings = [
+  { name = "NODE", class_name = "NodeDO" }
+]
+[[migrations]]
+tag = "v1"
+new_classes = ["NodeDO"]
+[vars]
+REGISTRY_URL = "https://spawn-registry-service.your-subdomain.workers.dev"

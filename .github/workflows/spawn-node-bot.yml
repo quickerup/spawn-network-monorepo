@@ -1,0 +1,31 @@
+name: Spawn Node Bot
+on:
+  repository_dispatch:
+    types: [spawn]
+jobs:
+  spawn:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+      - run: npm ci
+      - name: Generate wrangler config for new node
+        run: npx tsx scripts/templating/generate-node-toml.ts "${{ github.event.client_payload.token_ref }}"
+        env:
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          TOKEN_STORE_KV_ID: ${{ secrets.TOKEN_STORE_KV_ID }}
+          ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
+      - name: Commit generated node config
+        run: |
+          git config user.name "spawn-bot"
+          git config user.email "spawn-bot@users.noreply.github.com"
+          git add apps/node-instances/
+          git diff --cached --quiet || git commit -m "chore: add generated config for new node"
+          git push
+      - name: Deploy new node
+        run: npx wrangler deploy --config "apps/node-instances/${{ github.event.client_payload.token_ref }}/wrangler.toml"
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}

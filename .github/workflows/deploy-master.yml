@@ -1,0 +1,23 @@
+name: Deploy Master Bot
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/master-bot/**'
+      - 'packages/**'
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+      - run: npm ci
+      - name: Typecheck
+        run: npm run typecheck --workspace=apps/master-bot
+      - name: Deploy Master Bot
+        run: npm run deploy:master
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CF_API_TOKEN }}

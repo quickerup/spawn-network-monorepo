@@ -1,0 +1,16 @@
+{
+  "name": "@spawn/master-bot",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@spawn/shared-types": "*"
+  },
+  "devDependencies": {
+    "wrangler": "^3.28.0"
+  }
+}
