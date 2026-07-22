@@ -100,54 +100,64 @@ KEY_JSON=$(curl -s -H "Authorization: Bearer $GH_PAT" -H "Accept: application/vn
 KEY_ID=$(echo "$KEY_JSON" | python3 -c "import sys,json; print(json.load(sys.stdin)['key_id'])")
 PUBLIC_KEY=$(echo "$KEY_JSON" | python3 -c "import sys,json; print(json.load(sys.stdin)['key'])")
 
-# Encrypting natively via ctypes and the system libsodium to avoid pip/pynacl errors
+# Encrypting natively via robust ctypes lookup avoiding linker mismatch
 ENCRYPTED=$(printf '%s' "$CF_TOKEN" | python3 - "$PUBLIC_KEY" << 'EOF'
-import sys, base64, ctypes, ctypes.util, os
+import sys, base64, ctypes, os
 
-lib_path = ctypes.util.find_library('sodium') or ctypes.util.find_library('libsodium')
-if not lib_path:
-    # Explicit fallbacks for Termux and common Unix environments
+sodium = None
+# Try system linker search first with explicit shared object names
+for lib_name in ["libsodium.so.23", "libsodium.so.26", "libsodium.so", "libsodium.dylib"]:
+    try:
+        sodium = ctypes.CDLL(lib_name)
+        break
+    except OSError:
+        continue
+
+# Fallback to direct absolute paths for multiarch Linux and Termux
+if not sodium:
     fallbacks = [
-        '/data/data/com.termux/files/usr/lib/libsodium.so',
-        '/usr/lib/libsodium.so',
-        '/usr/lib/x86_64-linux-gnu/libsodium.so',
-        '/usr/local/lib/libsodium.dylib'
+        "/usr/lib/aarch64-linux-gnu/libsodium.so.23",
+        "/usr/lib/aarch64-linux-gnu/libsodium.so.26",
+        "/usr/lib/aarch64-linux-gnu/libsodium.so",
+        "/data/data/com.termux/files/usr/lib/libsodium.so",
+        "/usr/lib/x86_64-linux-gnu/libsodium.so.23",
+        "/usr/lib/x86_64-linux-gnu/libsodium.so",
+        "/usr/lib/libsodium.so",
+        "/usr/local/lib/libsodium.dylib"
     ]
     for p in fallbacks:
         if os.path.exists(p):
-            lib_path = p
-            break
+            try:
+                sodium = ctypes.CDLL(p)
+                break
+            except OSError:
+                continue
 
-if not lib_path:
-    print("❌ libsodium not found. Install it via OS package manager (e.g., 'pkg install libsodium').", file=sys.stderr)
+if not sodium:
+    print("❌ Could not load libsodium. Install it via package manager (e.g., 'sudo apt install libsodium23' or 'pkg install libsodium').", file=sys.stderr)
     sys.exit(1)
 
 try:
-    sodium = ctypes.cdll.LoadLibrary(lib_path)
+    sodium.crypto_box_seal.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_ulonglong, ctypes.c_void_p]
+    sodium.crypto_box_seal.restype = ctypes.c_int
+
+    public_key = base64.b64decode(sys.argv[1])
+    secret_value = sys.stdin.buffer.read()
+
+    out_len = len(secret_value) + 48
+    ciphertext = ctypes.create_string_buffer(out_len)
+
+    if sodium.crypto_box_seal(ciphertext, secret_value, len(secret_value), public_key) != 0:
+        print("❌ Encryption failed inside libsodium", file=sys.stderr)
+        sys.exit(1)
+
+    print(base64.b64encode(ciphertext.raw).decode('utf-8'))
 except Exception as e:
-    print("❌ Failed to load libsodium: " + str(e), file=sys.stderr)
+    print(f"❌ Encryption routine error: {e}", file=sys.stderr)
     sys.exit(1)
-
-# Configure function signature for crypto_box_seal
-sodium.crypto_box_seal.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_ulonglong, ctypes.c_void_p]
-sodium.crypto_box_seal.restype = ctypes.c_int
-
-public_key = base64.b64decode(sys.argv[1])
-secret_value = sys.stdin.buffer.read()
-
-# libsodium crypto_box_SEALBYTES is exactly 48 bytes
-out_len = len(secret_value) + 48
-ciphertext = ctypes.create_string_buffer(out_len)
-
-if sodium.crypto_box_seal(ciphertext, secret_value, len(secret_value), public_key) != 0:
-    print("❌ Encryption failed inside libsodium", file=sys.stderr)
-    sys.exit(1)
-
-print(base64.b64encode(ciphertext.raw).decode('utf-8'))
 EOF
 )
 
-# Ensure encryption didn't fail before proceeding
 if [ -z "$ENCRYPTED" ]; then
     echo "❌ Failed to encrypt token. Exiting."
     exit 1
